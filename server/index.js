@@ -1,43 +1,37 @@
-const db = require('./models');
-
-// { force: false } ensures you don't delete your data every time you restart
-db.sequelize.sync({ force: false }).then(() => {
-  app.listen(process.env.PORT, () => {
-    console.log(`Server running on port ${process.env.PORT}`);
-  });
-});
-
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
 const { connectDB, sequelize } = require('./config/database');
-require('./routes/auth'); // Runs your Passport strategy logic
+const db = require('./models');
 
 const app = express();
 
-// Middleware
+// 1. GLOBAL MIDDLEWARE
 app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 
-// Session config (needed for Passport)
+// 2. SESSION SETUP (Must be before Passport)
 app.use(session({
   secret: 'secret_key_change_this',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: { secure: false } // Set to true only if using HTTPS/Production
 }));
 
+// 3. PASSPORT INITIALIZATION
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Connect and Sync Database
+// 4. ROUTES (Must be after Passport/Session)
+app.use('/auth', require('./routes/auth'));
+app.use('/api/subjects', require('./routes/subjects'));
+app.use('/api/notes', require('./routes/notes'));
+
+// 5. DATABASE & SERVER START
 connectDB();
 sequelize.sync({ force: false }).then(() => {
   console.log("Database tables synced!");
+  app.listen(5000, () => console.log('🚀 Server running on port 5000'));
 });
-
-// Routes
-app.use('/auth', require('./routes/auth'));
-// app.use('/api/subjects', require('./routes/subjects'));
-
-app.listen(5000, () => console.log('🚀 Server running on port 5000'));

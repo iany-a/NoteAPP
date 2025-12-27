@@ -32,9 +32,11 @@ const Dashboard = () => {
       }, { withCredentials: true });
       
       // Refresh data to keep sidebar and editor in sync
+      alert("Note saved successfully!");
       fetchData();
     } catch (err) {
-      alert("Failed to save note");
+      //alert("Failed to save note");
+      console.error("Save failed", err);
     }
   };
 
