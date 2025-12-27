@@ -30,7 +30,7 @@ const Dashboard = () => {
       await axios.put(`http://localhost:5000/api/notes/${selectedNote.id}`, {
         content: updatedContent
       }, { withCredentials: true });
-      
+
       // Refresh data to keep sidebar and editor in sync
       alert("Note saved successfully!");
       fetchData();
@@ -45,22 +45,32 @@ const Dashboard = () => {
   return (
     <div className="dashboard-layout" style={{ display: 'flex', height: '100vh' }}>
       <div className="sidebar-section" style={{ width: '300px', borderRight: '1px solid #ddd' }}>
-        <Sidebar 
-          subjects={subjects} 
-          onNoteSelect={(note) => setSelectedNote(note)} 
+        <Sidebar
+          subjects={subjects}
+          onNoteSelect={(note) => {
+            console.log("Note selected in Dashboard:", note);
+            setSelectedNote(note);
+          }}
           onRefresh={fetchData}
         />
       </div>
-      <div className="editor-section" style={{ flex: 1, padding: '20px' }}>
+      <div className="editor-section" style={{
+        flex: 1,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        border: '2px solid red' /* DELETE THIS after testing */
+      }}>
         {selectedNote ? (
-          <Editor 
-            note={selectedNote} 
-            onSave={handleSaveNote} 
+          <Editor
+            activeNote={selectedNote}
+            onNoteUpdated={fetchData}
           />
         ) : (
-          <div className="empty-state">
+          <div style={{ padding: '50px', textAlign: 'center' }}>
             <h2>Welcome!</h2>
-            <p>Select a note from the sidebar or create a new subject to get started.</p>
+            <p>Select a note to begin.</p>
           </div>
         )}
       </div>

@@ -1,50 +1,106 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
-const Editor = ({ note, onSave }) => {
-  const [content, setContent] = useState(note.content || '');
-  const [isPreview, setIsPreview] = useState(false);
+const Editor = ({ activeNote, onNoteUpdated }) => {
+    console.log("Editor received activeNote:", activeNote);
+    const [title, setTitle] = useState(activeNote?.title || '');
+    const [content, setContent] = useState(activeNote?.content || '');
 
-  // When the user clicks a different note in the sidebar, update the editor text
-  useEffect(() => {
-    setContent(note.content || '');
-  }, [note]);
+    // Update local state when a different note is selected
+    useEffect(() => {
+        if (activeNote) {
+            setTitle(activeNote?.title || '');
+            setContent(activeNote?.content || '');
+        }
+    }, [activeNote]);
 
-  return (
-    <div className="editor-container">
-      <div className="editor-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <h2>{note.title}</h2>
-        <div>
-          <button onClick={() => setIsPreview(!isPreview)}>
-            {isPreview ? 'Edit Mode' : 'Preview Mode'}
-          </button>
-          <button 
-            onClick={() => onSave(content)} 
-            style={{ marginLeft: '10px', backgroundColor: '#28a745', color: 'white' }}
-          >
-            Save Note
-          </button>
+    // The function that actually talks to the database
+    const saveNote = useCallback(async (updatedTitle, updatedContent) => {
+        if (!activeNote) return;
+        try {
+            await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`, {
+                title: updatedTitle,
+                content: updatedContent
+            }, { withCredentials: true });
+
+            // Tell the parent (App.js) to refresh the sidebar so the title updates
+            onNoteUpdated();
+        } catch (err) {
+            console.error("Failed to auto-save", err);
+        }
+    }, [activeNote, onNoteUpdated]);
+
+    // Debounce logic: Wait 1000ms after typing stops to save
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (activeNote && (title !== activeNote.title || content !== activeNote.content)) {
+                saveNote(title, content);
+            }
+        }, 1000);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [title, content, activeNote, saveNote]);
+
+    if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
+
+    // Function to handle manual delete
+    const handleDelete = async () => {
+        if (!activeNote) return;
+
+        if (window.confirm("Are you sure you want to delete this note?")) {
+            try {
+                await axios.delete(`http://localhost:5000/api/notes/${activeNote.id}`, { withCredentials: true });
+                // Refresh the sidebar and clear the current selection
+                onNoteUpdated();
+            } catch (err) {
+                console.error("Failed to delete note", err);
+                alert("Error deleting note");
+            }
+        }
+    };
+
+    // Optional: If you want to keep a manual Save button as a "safety"
+    const handleSave = () => {
+        saveNote(title, content);
+        alert("Saved!");
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+
+            {/* TOOLBAR */}
+            <div style={{ height: '50px', display: 'flex', justifyContent: 'space-between', padding: '0 20px', background: '#eee', alignItems: 'center' }}>
+                <span>Auto-saving...</span>
+                <button onClick={handleDelete} style={{ color: 'red' }}>Delete Note</button>
+            </div>
+
+            {/* MAIN AREA */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                {/* LEFT: INPUT */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #ddd' }}>
+                    <input
+                        style={{ fontSize: '24px', fontWeight: 'bold', border: 'none', outline: 'none', marginBottom: '10px' }}
+                        placeholder="Title..."
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                    />
+                    <textarea
+                        style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }}
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                    />
+                </div>
+
+                {/* RIGHT: PREVIEW */}
+                <div style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#fff' }}>
+                    <ReactMarkdown>{content}</ReactMarkdown>
+                </div>
+
+            </div>
         </div>
-      </div>
-
-      {isPreview ? (
-        <div className="markdown-preview" style={{ border: '1px solid #ddd', padding: '20px', minHeight: '400px', borderRadius: '8px' }}>
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
-      ) : (
-        <textarea
-          style={{ width: '100%', height: '400px', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Start typing your course notes here (Markdown supported)..."
-        />
-      )}
-      
-      <div style={{ marginTop: '10px', color: '#666' }}>
-        <small>Tip: Use # for headers, * for bullets, and **bold** for emphasis.</small>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Editor;
