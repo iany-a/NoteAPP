@@ -91,3 +91,26 @@
   background-color: #ffffff;
   overflow-y: auto; /* Only the preview scrolls if it's long */
 }
+
+/* In your CSS file */
+.subject-actions {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.subject-header-row:hover .subject-actions {
+  opacity: 1;
+}
+
+/* Add to App.css */
+.note-actions {
+  visibility: hidden;
+}
+
+.note-item-wrapper:hover .note-actions {
+  visibility: visible;
+}
+
+.note-item-wrapper:hover {
+  background-color: #f0f0f0;
+}

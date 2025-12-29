@@ -44,35 +44,12 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
 
     if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
 
-    // Function to handle manual delete
-    const handleDelete = async () => {
-        if (!activeNote) return;
-
-        if (window.confirm("Are you sure you want to delete this note?")) {
-            try {
-                await axios.delete(`http://localhost:5000/api/notes/${activeNote.id}`, { withCredentials: true });
-                // Refresh the sidebar and clear the current selection
-                onNoteUpdated();
-            } catch (err) {
-                console.error("Failed to delete note", err);
-                alert("Error deleting note");
-            }
-        }
-    };
-
-    // Optional: If you want to keep a manual Save button as a "safety"
-    const handleSave = () => {
-        saveNote(title, content);
-        alert("Saved!");
-    };
-
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
 
             {/* TOOLBAR */}
             <div style={{ height: '50px', display: 'flex', justifyContent: 'space-between', padding: '0 20px', background: '#eee', alignItems: 'center' }}>
                 <span>Auto-saving...</span>
-                <button onClick={handleDelete} style={{ color: 'red' }}>Delete Note</button>
             </div>
 
             {/* MAIN AREA */}

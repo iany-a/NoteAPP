@@ -31,4 +31,26 @@ router.post('/create', authCheck, async (req, res) => {
   }
 });
 
+router.put('/:id', authCheck, async (req, res) => {
+  try {
+    const { name } = req.body;
+    await Subject.update({ name }, { where: { id: req.params.id, UserId: req.user.id } });
+    res.json({ message: "Subject renamed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a subject
+router.delete('/:id', authCheck, async (req, res) => {
+  try {
+    // Note: If you set up "onDelete: CASCADE" in your Sequelize associations, 
+    // deleting the subject will automatically delete all notes inside it.
+    await Subject.destroy({ where: { id: req.params.id, UserId: req.user.id } });
+    res.json({ message: "Subject deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
