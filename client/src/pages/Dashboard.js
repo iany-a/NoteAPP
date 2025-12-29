@@ -23,22 +23,6 @@ const Dashboard = () => {
     }
   };
 
-  // 2. Handle saving a note
-  const handleSaveNote = async (updatedContent) => {
-    if (!selectedNote) return;
-    try {
-      await axios.put(`http://localhost:5000/api/notes/${selectedNote.id}`, {
-        content: updatedContent
-      }, { withCredentials: true });
-
-      // Refresh data to keep sidebar and editor in sync
-      alert("Note saved successfully!");
-      fetchData();
-    } catch (err) {
-      //alert("Failed to save note");
-      console.error("Save failed", err);
-    }
-  };
 
   if (loading) return <div>Loading your workspace...</div>;
 
@@ -60,7 +44,6 @@ const Dashboard = () => {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        border: '2px solid red' /* DELETE THIS after testing */
       }}>
         {selectedNote ? (
           <Editor

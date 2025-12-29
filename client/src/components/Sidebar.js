@@ -1,9 +1,38 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import '../App.css'
 
 const Sidebar = ({ subjects, onRefresh, onAddSubject, onNoteSelect, activeNote }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
+    const [searchTerm, setSearchTerm] = useState(''); // NEW: Search state
+
+    // --- SEARCH FILTERING LOGIC ---
+    // We create a filtered copy of the subjects to display
+    const filteredSubjects = subjects.map(subject => {
+        const query = searchTerm.toLowerCase();
+        const subjectNameMatches = subject.name.toLowerCase().includes(query);
+
+        // If the folder name matches, show ALL notes in that folder.
+        // Otherwise, only show notes that match the query.
+        const filteredNotes = subject.Notes.filter(note => {
+            if (subjectNameMatches) return true; // Keep all notes if folder matches
+
+            const noteTitle = (note.title || '').toLowerCase();
+            const noteContent = (note.content || '').toLowerCase();
+            const noteDate = new Date(note.createdAt).toLocaleDateString().toLowerCase();
+
+            return noteTitle.includes(query) ||
+                noteContent.includes(query) ||
+                noteDate.includes(query);
+        });
+
+        return { ...subject, Notes: filteredNotes };
+    }).filter(subject => {
+        const query = searchTerm.toLowerCase();
+        // Keep the subject if it has matching notes OR the subject name itself matches
+        return subject.Notes.length > 0 || subject.name.toLowerCase().includes(query);
+    });
 
     // Toggle folder visibility
     const toggleFolder = (id) => {
@@ -101,24 +130,35 @@ const Sidebar = ({ subjects, onRefresh, onAddSubject, onNoteSelect, activeNote }
         <div className="sidebar-content" style={{ padding: '15px' }}>
             <h3>My Subjects</h3>
 
+            {/* NEW: Search Bar */}
+            <div style={{ marginBottom: '15px' }}>
+                <input
+                    type="text"
+                    placeholder="Search notes or dates..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+            </div>
+
             {/* Create Subject Input */}
             <div style={{ marginBottom: '20px' }}>
                 <input
                     value={newSubjectName}
                     onChange={(e) => setNewSubjectName(e.target.value)}
                     placeholder="New Subject..."
-                    style={{ width: '70%' }}
+                    style={{ width: '70%', padding: '5px' }}
                 />
-                <button onClick={handleAddSubject}>+</button>
+                <button onClick={handleAddSubject} style={{ padding: '5px 10px' }}>+</button>
             </div>
 
             <hr />
 
-            {/* List Subjects and nested Notes */}
-            {subjects.map(subject => (
+            {/* CHANGE: Loop through filteredSubjects instead of subjects */}
+            {filteredSubjects.map(subject => (
                 <div key={subject.id} style={{ marginBottom: '10px' }}>
-                    {/* Unified Header Row */}
                     <div
+                        className="subject-header-row"
                         style={{
                             cursor: 'pointer',
                             fontWeight: 'bold',
@@ -129,36 +169,17 @@ const Sidebar = ({ subjects, onRefresh, onAddSubject, onNoteSelect, activeNote }
                         }}
                         onClick={() => toggleFolder(subject.id)}
                     >
-                        {/* Left Side: Icon and Name */}
-                        <span>{expandedFolders[subject.id] ? '📂' : '📁'} {subject.name}</span>
+                        <span>{expandedFolders[subject.id] || searchTerm ? '📂' : '📁'} {subject.name}</span>
 
-                        {/* Right Side: All Actions Inline */}
-                        <div style={{ display: 'flex', gap: '5px' }}>
-                            <button
-                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' }}
-                                onClick={(e) => { e.stopPropagation(); handleRenameSubject(subject.id, subject.name); }}
-                                title="Rename"
-                            >
-                                ✏️
-                            </button>
-                            <button
-                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '12px' }}
-                                onClick={(e) => { e.stopPropagation(); handleDeleteSubject(subject.id); }}
-                                title="Delete Subject"
-                            >
-                                🗑️
-                            </button>
-                            <button
-                                className="add-note-btn"
-                                onClick={(e) => { e.stopPropagation(); handleAddNote(subject.id); }}
-                            >
-                                + Note
-                            </button>
+                        <div className="subject-actions">
+                            <button onClick={(e) => { e.stopPropagation(); handleRenameSubject(subject.id, subject.name); }}>✏️</button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteSubject(subject.id); }}>🗑️</button>
+                            <button className="add-note-btn" onClick={(e) => { e.stopPropagation(); handleAddNote(subject.id); }}>+ Note</button>
                         </div>
                     </div>
 
-                    {/* Render Notes if folder is expanded */}
-                    {expandedFolders[subject.id] && (
+                    {/* Render Notes if folder is expanded OR if we are searching */}
+                    {(expandedFolders[subject.id] || searchTerm) && (
                         <div style={{ marginLeft: '20px', marginTop: '5px' }}>
                             {subject.Notes.map(note => (
                                 <div
@@ -168,33 +189,29 @@ const Sidebar = ({ subjects, onRefresh, onAddSubject, onNoteSelect, activeNote }
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        padding: '4px 8px',
+                                        padding: '6px 8px',
                                         cursor: 'pointer',
-                                        borderRadius: '4px'
+                                        borderRadius: '4px',
+                                        borderBottom: '1px solid #f9f9f9'
                                     }}
                                     onClick={() => onNoteSelect(note)}
                                 >
-                                    <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        📄 {note.title || 'Untitled'}
-                                    </span>
+                                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                        <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            📄 {note.title || 'Untitled'}
+                                        </span>
+                                        {/* NEW: Date Display */}
+                                        <small style={{ fontSize: '10px', color: '#999' }}>
+                                            {new Date(note.createdAt).toLocaleDateString()}
+                                        </small>
+                                    </div>
 
-                                    <div className="note-actions" style={{ display: 'flex', gap: '4px' }}>
-                                        <button
-                                            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '10px', opacity: 0.6 }}
-                                            onClick={(e) => { e.stopPropagation(); handleRenameNote(note.id, note.title); }}
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '10px', opacity: 0.6 }}
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }}
-                                        >
-                                            🗑️
-                                        </button>
+                                    <div className="note-actions">
+                                        <button onClick={(e) => { e.stopPropagation(); handleRenameNote(note.id, note.title); }}>✏️</button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }}>🗑️</button>
                                     </div>
                                 </div>
                             ))}
-                            {subject.Notes?.length === 0 && <small>No notes yet</small>}
                         </div>
                     )}
                 </div>

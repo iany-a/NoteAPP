@@ -5,7 +5,6 @@ const passport = require('passport');
 const session = require('express-session');
 const { connectDB, sequelize } = require('./config/database');
 const db = require('./models');
-
 const app = express();
 
 // 1. GLOBAL MIDDLEWARE
@@ -35,3 +34,6 @@ sequelize.sync({ alter: true }).then(() => {
   console.log("Database tables synced!");
   app.listen(5000, () => console.log('🚀 Server running on port 5000'));
 });
+
+//6. Image uploads
+app.use('/uploads', express.static('uploads'));

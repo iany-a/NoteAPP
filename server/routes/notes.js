@@ -2,6 +2,25 @@ const express = require('express');
 const router = express.Router();
 const { Note } = require('../models');
 const authCheck = require('../middleware/authCheck');
+const multer = require('multer');
+const path = require('path');
+
+// Configure where to save images
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+
+const upload = multer({ storage });
+
+// The actual route
+router.post('/upload-image', authCheck, upload.single('image'), (req, res) => {
+  if (!req.file) return res.status(400).send('No file uploaded.');
+  
+  // Return the URL so the frontend can use it
+  const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  res.json({ url: imageUrl });
+});
 
 // POST create a new note
 router.post('/', authCheck, async (req, res) => {

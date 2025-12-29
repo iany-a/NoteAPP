@@ -44,11 +44,46 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
 
     if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
 
+    const handlePaste = async (e) => {
+        const items = e.clipboardData.items;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                // It's an image! Prevent default paste behavior
+                e.preventDefault();
+                const blob = items[i].getAsFile();
+
+                // Send to server
+                const formData = new FormData();
+                formData.append('image', blob);
+
+                try {
+                    const res = await axios.post('http://localhost:5000/api/notes/upload-image', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                        withCredentials: true
+                    });
+
+                    // Insert Markdown at the current cursor position
+                    const imageUrl = res.data.url;
+                    const markdownImage = `\n![Image](${imageUrl})\n`;
+
+                    // Update content state
+                    const { selectionStart, selectionEnd } = e.target;
+                    const newContent = content.substring(0, selectionStart) + markdownImage + content.substring(selectionEnd);
+                    setContent(newContent);
+
+                } catch (err) {
+                    console.error("Upload failed", err);
+                }
+            }
+        }
+    };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
 
             {/* TOOLBAR */}
-            <div style={{ height: '50px', display: 'flex', justifyContent: 'space-between', padding: '0 20px', background: '#eee', alignItems: 'center' }}>
+            <div style={{ height: '50px', display: 'flex', justifyContent: 'space-between', padding: '0 20px', background: '#6c6c6cff', alignItems: 'center' }}>
                 <span>Auto-saving...</span>
             </div>
 
@@ -56,7 +91,7 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
                 {/* LEFT: INPUT */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #ddd' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #bea6a6ff' }}>
                     <input
                         style={{ fontSize: '24px', fontWeight: 'bold', border: 'none', outline: 'none', marginBottom: '10px' }}
                         placeholder="Title..."
@@ -64,9 +99,12 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
                         onChange={(e) => setTitle(e.target.value)}
                     />
                     <textarea
-                        style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }}
+                        className="zen-textarea"
+                        style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }} // Added inline flex: 1 to be safe
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
+                        onPaste={handlePaste}
+                        placeholder="Start typing or paste an image..."
                     />
                 </div>
 
