@@ -1,50 +1,113 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useRef
+import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
-const Editor = ({ note, onSave }) => {
-  const [content, setContent] = useState(note.content || '');
-  const [isPreview, setIsPreview] = useState(false);
+const Editor = ({ activeNote, onLocalContentUpdate }) => {
+    const [content, setContent] = useState(activeNote?.content || '');
+    const [saveStatus, setSaveStatus] = useState('Saved');
 
-  // When the user clicks a different note in the sidebar, update the editor text
-  useEffect(() => {
-    setContent(note.content || '');
-  }, [note]);
+    useEffect(() => {
+        if (content === activeNote.content) return;
 
-  return (
-    <div className="editor-container">
-      <div className="editor-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-        <h2>{note.title}</h2>
-        <div>
-          <button onClick={() => setIsPreview(!isPreview)}>
-            {isPreview ? 'Edit Mode' : 'Preview Mode'}
-          </button>
-          <button 
-            onClick={() => onSave(content)} 
-            style={{ marginLeft: '10px', backgroundColor: '#28a745', color: 'white' }}
-          >
-            Save Note
-          </button>
+        const delayDebounceFn = setTimeout(async () => {
+            try {
+                setSaveStatus('Saving...');
+                await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`,
+                    { content: content },
+                    { withCredentials: true }
+                );
+
+                setSaveStatus('Saved');
+
+                // THIS IS THE KEY: Update the parent's memory
+                if (onLocalContentUpdate) {
+                    onLocalContentUpdate(activeNote.id, content);
+                }
+            } catch (err) {
+                console.error("Error saving", err);
+                setSaveStatus('Error');
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [content, activeNote.id, activeNote.content, onLocalContentUpdate]);
+
+    if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
+
+    const handlePaste = async (e) => {
+        const items = e.clipboardData.items;
+
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                // It's an image! Prevent default paste behavior
+                e.preventDefault();
+                const blob = items[i].getAsFile();
+
+                // Send to server
+                const formData = new FormData();
+                formData.append('image', blob);
+
+                try {
+                    const res = await axios.post('http://localhost:5000/api/notes/upload-image', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' },
+                        withCredentials: true
+                    });
+
+                    // Insert Markdown at the current cursor position
+                    const imageUrl = res.data.url;
+                    const markdownImage = `\n![Image](${imageUrl})\n`;
+
+                    // Update content state
+                    const { selectionStart, selectionEnd } = e.target;
+                    const newContent = content.substring(0, selectionStart) + markdownImage + content.substring(selectionEnd);
+                    setContent(newContent);
+
+                } catch (err) {
+                    console.error("Upload failed", err);
+                }
+            }
+        }
+    };
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+
+            {/* MAIN AREA */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+
+                {/* LEFT: INPUT */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #bea6a6ff' }}>
+                    <textarea
+                        className="zen-textarea"
+                        style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }} // Added inline flex: 1 to be safe
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        onPaste={handlePaste}
+                        placeholder="Start typing or paste an image..."
+                    />
+                </div>
+
+                {/* RIGHT: PREVIEW */}
+                <div style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#fff' }}>
+                    <ReactMarkdown>{content}</ReactMarkdown>
+                </div>
+            </div>
+
+            <div style={{
+                position: 'absolute',
+                bottom: '10px',
+                right: '20px',
+                fontSize: '11px',
+                color: saveStatus === 'Saving...' ? '#6366f1' : '#999',
+                fontStyle: 'italic',
+                background: 'rgba(255,255,255,0.8)',
+                padding: '2px 8px',
+                borderRadius: '10px'
+            }}>
+                {saveStatus}
+            </div>
         </div>
-      </div>
-
-      {isPreview ? (
-        <div className="markdown-preview" style={{ border: '1px solid #ddd', padding: '20px', minHeight: '400px', borderRadius: '8px' }}>
-          <ReactMarkdown>{content}</ReactMarkdown>
-        </div>
-      ) : (
-        <textarea
-          style={{ width: '100%', height: '400px', padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc' }}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Start typing your course notes here (Markdown supported)..."
-        />
-      )}
-      
-      <div style={{ marginTop: '10px', color: '#666' }}>
-        <small>Tip: Use # for headers, * for bullets, and **bold** for emphasis.</small>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default Editor;

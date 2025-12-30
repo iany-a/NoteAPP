@@ -32,7 +32,110 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
+}
+
+/*--------------------------------------------*/
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* Make sure it takes the full height of the dashboard */
+}
+
+.editor-toolbar {
+  padding: 10px 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #000000;
+  display: flex;
+  gap: 10px;
+}
+
+.editor-main {
+  display: flex;
+  flex: 1;
+  /* This takes up all remaining space */
+  overflow: hidden;
+  /* Prevents the whole page from scrolling */
+}
+
+
+/* Editor.js inner styles */
+.editor-input-side {
+  flex: 1;
+  /* Grow to fill the left half */
+  display: flex;
+  /* Make THIS a flexbox too */
+  flex-direction: column;
+  /* Stack Title and Textarea */
+}
+
+.content-field {
+  flex: 1;
+  /* THIS pushes everything else up and fills the bottom */
+  margin-top: 10px;
+  border: none;
+  resize: none;
+}
+
+.title-field {
+  width: 100%;
+  font-size: 1.8rem;
+  font-weight: bold;
+  border: none;
+  outline: none;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+
+
+.preview-side {
+  flex: 1;
+  padding: 20px;
+  background-color: #ffffff;
+  overflow-y: auto;
+  /* Only the preview scrolls if it's long */
+}
+
+/*subjects and notes styling*/
+/* 1. Hide actions by default */
+.subject-actions, 
+.note-actions {
+  display: none !important; 
+}
+
+/* 2. Show actions when hovering over the row */
+.subject-header-row:hover .subject-actions,
+.note-item-wrapper:hover .note-actions {
+  display: flex !important;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 3. Row background changes on hover */
+.subject-header-row:hover, 
+.note-item-wrapper:hover {
+  background-color: #f0f0f0 !important;
+  border-radius: 4px;
+}
+
+/* 4. Button styling and hover effects */
+.subject-actions button,
+.note-actions button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.subject-actions button:hover,
+.note-actions button:hover {
+  background-color: #ddd;
+  transform: scale(1.2);
 }
