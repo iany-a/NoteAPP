@@ -1,46 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useRef
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 
-const Editor = ({ activeNote, onNoteUpdated }) => {
-    console.log("Editor received activeNote:", activeNote);
-    const [title, setTitle] = useState(activeNote?.title || '');
+const Editor = ({ activeNote, onLocalContentUpdate }) => {
     const [content, setContent] = useState(activeNote?.content || '');
+    const [saveStatus, setSaveStatus] = useState('Saved');
 
-    // Update local state when a different note is selected
     useEffect(() => {
-        if (activeNote) {
-            setTitle(activeNote?.title || '');
-            setContent(activeNote?.content || '');
-        }
-    }, [activeNote]);
+        if (content === activeNote.content) return;
 
-    // The function that actually talks to the database
-    const saveNote = useCallback(async (updatedTitle, updatedContent) => {
-        if (!activeNote) return;
-        try {
-            await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`, {
-                title: updatedTitle,
-                content: updatedContent
-            }, { withCredentials: true });
+        const delayDebounceFn = setTimeout(async () => {
+            try {
+                setSaveStatus('Saving...');
+                await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`,
+                    { content: content },
+                    { withCredentials: true }
+                );
 
-            // Tell the parent (App.js) to refresh the sidebar so the title updates
-            onNoteUpdated();
-        } catch (err) {
-            console.error("Failed to auto-save", err);
-        }
-    }, [activeNote, onNoteUpdated]);
+                setSaveStatus('Saved');
 
-    // Debounce logic: Wait 1000ms after typing stops to save
-    useEffect(() => {
-        const delayDebounceFn = setTimeout(() => {
-            if (activeNote && (title !== activeNote.title || content !== activeNote.content)) {
-                saveNote(title, content);
+                // THIS IS THE KEY: Update the parent's memory
+                if (onLocalContentUpdate) {
+                    onLocalContentUpdate(activeNote.id, content);
+                }
+            } catch (err) {
+                console.error("Error saving", err);
+                setSaveStatus('Error');
             }
-        }, 1000);
+        }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [title, content, activeNote, saveNote]);
+    }, [content, activeNote.id, activeNote.content, onLocalContentUpdate]);
 
     if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
 
@@ -82,11 +72,6 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
 
-            {/* TOOLBAR */}
-            <div style={{ height: '50px', display: 'flex', justifyContent: 'space-between', padding: '0 20px', background: '#6c6c6cff', alignItems: 'center' }}>
-                <span>Auto-saving...</span>
-            </div>
-
             {/* MAIN AREA */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
@@ -106,7 +91,20 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
                 <div style={{ flex: 1, padding: '20px', overflowY: 'auto', background: '#fff' }}>
                     <ReactMarkdown>{content}</ReactMarkdown>
                 </div>
+            </div>
 
+            <div style={{
+                position: 'absolute',
+                bottom: '10px',
+                right: '20px',
+                fontSize: '11px',
+                color: saveStatus === 'Saving...' ? '#6366f1' : '#999',
+                fontStyle: 'italic',
+                background: 'rgba(255,255,255,0.8)',
+                padding: '2px 8px',
+                borderRadius: '10px'
+            }}>
+                {saveStatus}
             </div>
         </div>
     );

@@ -16,7 +16,7 @@ const upload = multer({ storage });
 // The actual route
 router.post('/upload-image', authCheck, upload.single('image'), (req, res) => {
   if (!req.file) return res.status(400).send('No file uploaded.');
-  
+
   // Return the URL so the frontend can use it
   const imageUrl = `http://localhost:5000/uploads/${req.file.filename}`;
   res.json({ url: imageUrl });
@@ -41,13 +41,14 @@ router.post('/', authCheck, async (req, res) => {
 // PUT update an existing note (for the Save button)
 router.put('/:id', authCheck, async (req, res) => {
   try {
-    const note = await Note.findOne({ where: { id: req.params.id } });
+    const { title, content } = req.body;
+    const note = await Note.findByPk(req.params.id);
     if (!note) return res.status(404).send('Note not found');
 
     // Update both title and content
-    note.title = req.body.title;
-    note.content = req.body.content;
-    
+    if (title !== undefined) note.title = title;
+    if (content !== undefined) note.content = content;
+
     await note.save();
     res.json(note);
   } catch (err) {

@@ -6,7 +6,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
-    
+
     // NEW STATES FOR INLINE EDITING
     const [editingSubjectId, setEditingSubjectId] = useState(null);
     const [editingNoteId, setEditingNoteId] = useState(null);
@@ -52,14 +52,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
         } catch (err) { console.error("Error renaming subject", err); }
     };
 
-    const handleNoteRenameSubmit = async (id) => {
-        const finalTitle = tempName.trim() || "Untitled Note";
-        try {
-            await axios.put(`http://localhost:5000/api/notes/${id}`, { title: finalTitle }, { withCredentials: true });
-            setEditingNoteId(null);
-            onRefresh();
-        } catch (err) { console.error("Error renaming note", err); }
-    };
+
 
     const handleDeleteSubject = async (id) => {
         if (window.confirm("Are you sure? This will delete all notes in this subject!")) {
@@ -72,12 +65,30 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
 
     const handleAddNote = async (subjectId) => {
         try {
-            const res = await axios.post('http://localhost:5000/api/notes', { title: 'New Note', subjectId: subjectId }, { withCredentials: true });
+            const res = await axios.post('http://localhost:5000/api/notes',
+                { title: 'New Note', subjectId: subjectId },
+                { withCredentials: true });
             await onRefresh();
+            onNoteSelect(res.data);
             // Automatically start editing the new note's title
             setEditingNoteId(res.data.id);
             setTempName('New Note');
         } catch (err) { console.error("Error creating note", err); }
+    };
+
+    const handleNoteRenameSubmit = async (id) => {
+        const finalTitle = tempName.trim() || "Untitled Note";
+        try {
+            await axios.put(`http://localhost:5000/api/notes/${id}`,
+                { title: finalTitle },
+                { withCredentials: true });
+            if (activeNote && activeNote.id === id) {
+                onNoteSelect({ ...activeNote, title: finalTitle });
+            }
+
+            setEditingNoteId(null);
+            onRefresh();
+        } catch (err) { console.error("Error renaming note", err); }
     };
 
     const handleDeleteNote = async (id) => {
@@ -107,14 +118,14 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
                         <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
                             <span>{expandedFolders[subject.id] || searchTerm ? '📂' : '📁'} </span>
                             {editingSubjectId === subject.id ? (
-                                <input 
-                                    autoFocus 
-                                    value={tempName} 
-                                    onChange={(e) => setTempName(e.target.value)} 
-                                    onClick={(e) => e.stopPropagation()} 
+                                <input
+                                    autoFocus
+                                    value={tempName}
+                                    onChange={(e) => setTempName(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
                                     onBlur={() => handleSubjectRenameSubmit(subject.id)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSubjectRenameSubmit(subject.id)}
-                                    style={{ marginLeft: '5px', width: '80%' }} 
+                                    style={{ marginLeft: '5px', width: '80%' }}
                                 />
                             ) : (
                                 <span style={{ marginLeft: '5px' }}>{subject.name}</span>
@@ -130,17 +141,28 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
                     {(expandedFolders[subject.id] || searchTerm) && (
                         <div style={{ marginLeft: '20px', marginTop: '5px' }}>
                             {subject.Notes.map(note => (
-                                <div key={note.id} className="note-item-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', borderBottom: '1px solid #f9f9f9', background: activeNote?.id === note.id ? '#f0f0f0' : 'transparent' }} onClick={() => onNoteSelect(note)}>
+                                <div key={note.id}
+                                    className="note-item-wrapper"
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '6px 8px',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        borderBottom: '1px solid #f9f9f9',
+                                        backgroundColor: activeNote?.id === note.id ? '#f0f0f0' : 'transparent'
+                                    }} onClick={() => onNoteSelect(note)}>
                                     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
                                         {editingNoteId === note.id ? (
-                                            <input 
-                                                autoFocus 
-                                                value={tempName} 
-                                                onChange={(e) => setTempName(e.target.value)} 
-                                                onClick={(e) => e.stopPropagation()} 
+                                            <input
+                                                autoFocus
+                                                value={tempName}
+                                                onChange={(e) => setTempName(e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
                                                 onBlur={() => handleNoteRenameSubmit(note.id)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleNoteRenameSubmit(note.id)}
-                                                style={{ fontSize: '14px', width: '90%' }} 
+                                                style={{ fontSize: '14px', width: '90%' }}
                                             />
                                         ) : (
                                             <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
