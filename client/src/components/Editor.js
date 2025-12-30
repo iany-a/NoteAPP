@@ -92,12 +92,6 @@ const Editor = ({ activeNote, onNoteUpdated }) => {
 
                 {/* LEFT: INPUT */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #bea6a6ff' }}>
-                    <input
-                        style={{ fontSize: '24px', fontWeight: 'bold', border: 'none', outline: 'none', marginBottom: '10px' }}
-                        placeholder="Title..."
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                    />
                     <textarea
                         className="zen-textarea"
                         style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }} // Added inline flex: 1 to be safe
