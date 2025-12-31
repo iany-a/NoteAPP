@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import '../App.css';
 
-const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
+const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -29,18 +29,23 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
         return subject.Notes.length > 0 || subject.name.toLowerCase().includes(query);
     });
 
+    const handleAddSubject = () => {
+        if (!newSubjectName.trim()) return;
+
+        // 1. Tell the Dashboard to add it to the UI immediately
+        onAddSubject(newSubjectName);
+
+        // 2. Clear the input box immediately
+        setNewSubjectName('');
+
+        // Notice: No onRefresh() here! The Dashboard handles the update.
+    };
+
     const toggleFolder = (id) => {
         setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const handleAddSubject = async () => {
-        if (!newSubjectName) return;
-        try {
-            await axios.post('http://localhost:5000/api/subjects/create', { name: newSubjectName }, { withCredentials: true });
-            setNewSubjectName('');
-            onRefresh();
-        } catch (err) { console.error("Error creating subject", err); }
-    };
+
 
     // --- NEW INLINE SUBMIT HANDLERS ---
     const handleSubjectRenameSubmit = async (id) => {
@@ -68,11 +73,17 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
             const res = await axios.post('http://localhost:5000/api/notes',
                 { title: 'New Note', subjectId: subjectId },
                 { withCredentials: true });
+
+            setExpandedFolders(prev => ({
+                ...prev,
+                [subjectId]: true
+            }));
             await onRefresh();
             onNoteSelect(res.data);
             // Automatically start editing the new note's title
-            setEditingNoteId(res.data.id);
             setTempName('New Note');
+            setEditingNoteId(res.data.id);
+
         } catch (err) { console.error("Error creating note", err); }
     };
 
@@ -120,9 +131,11 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
                             {editingSubjectId === subject.id ? (
                                 <input
                                     autoFocus
+                                    className="rename-input"
                                     value={tempName}
                                     onChange={(e) => setTempName(e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
+                                    onFocus={(e) => e.target.select()}
+                                    //onClick={(e) => e.stopPropagation()}
                                     onBlur={() => handleSubjectRenameSubmit(subject.id)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleSubjectRenameSubmit(subject.id)}
                                     style={{ marginLeft: '5px', width: '80%' }}
@@ -157,12 +170,27 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote }) => {
                                         {editingNoteId === note.id ? (
                                             <input
                                                 autoFocus
+                                                className="rename-input"
                                                 value={tempName}
                                                 onChange={(e) => setTempName(e.target.value)}
+
+                                                // This forces the highlight/selection of the text
+                                                onFocus={(e) => {
+                                                    const val = e.target.value;
+                                                    e.target.setSelectionRange(0, val.length); // Selects from start to end
+                                                }}
+
+                                                // This prevents a click from de-selecting the text immediately
+                                                onMouseUp={(e) => {
+                                                    if (editingNoteId === note.id) {
+                                                        // Only prevent default if we just focused
+                                                        // so the user can still click to move the cursor later
+                                                    }
+                                                }}
+
                                                 onClick={(e) => e.stopPropagation()}
                                                 onBlur={() => handleNoteRenameSubmit(note.id)}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleNoteRenameSubmit(note.id)}
-                                                style={{ fontSize: '14px', width: '90%' }}
                                             />
                                         ) : (
                                             <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

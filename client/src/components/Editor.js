@@ -1,36 +1,39 @@
 import React, { useState, useEffect } from 'react'; // Added useRef
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import "../App.css"
 
 const Editor = ({ activeNote, onLocalContentUpdate }) => {
     const [content, setContent] = useState(activeNote?.content || '');
     const [saveStatus, setSaveStatus] = useState('Saved');
 
-    useEffect(() => {
-        if (content === activeNote.content) return;
+useEffect(() => {
+    // 1. If there's no note, or the content is EXACTLY what is already in the database, STOP.
+    if (!activeNote || content === activeNote.content) {
+        return;
+    }
 
-        const delayDebounceFn = setTimeout(async () => {
-            try {
-                setSaveStatus('Saving...');
-                await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`,
-                    { content: content },
-                    { withCredentials: true }
-                );
+    // 2. Only start the timer if the local content is different from the saved content
+    const delayDebounceFn = setTimeout(async () => {
+        try {
+            setSaveStatus('Saving...');
+            await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`, 
+                { content }, 
+                { withCredentials: true }
+            );
+            
+            // 3. Inform the parent that a save happened so the Sidebar stays in sync
+            onLocalContentUpdate(activeNote.id, content);
+            
+            setSaveStatus('Saved');
+        } catch (err) {
+            console.error("Save failed", err);
+            setSaveStatus('Error');
+        }
+    }, 500);
 
-                setSaveStatus('Saved');
-
-                // THIS IS THE KEY: Update the parent's memory
-                if (onLocalContentUpdate) {
-                    onLocalContentUpdate(activeNote.id, content);
-                }
-            } catch (err) {
-                console.error("Error saving", err);
-                setSaveStatus('Error');
-            }
-        }, 500);
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [content, activeNote.id, activeNote.content, onLocalContentUpdate]);
+    return () => clearTimeout(delayDebounceFn);
+}, [content, activeNote.id]); // <--- Only watch content and the note ID, not the whole note object
 
     if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
 
