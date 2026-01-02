@@ -2,33 +2,45 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import '../App.css';
 
-const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }) => {
+const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, onAddSubject }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [sharingNoteId, setSharingNoteId] = useState(null);
     const [shareEmail, setShareEmail] = useState('');
+    //const [groups, setGroups] = useState([]);
+    const [newGroupName, setNewGroupName] = useState('');
+    const [inviteCodeInput, setInviteCodeInput] = useState('');
+    const [isJoining, setIsJoining] = useState(false); // Toggle between Create/Join UI
 
     // NEW STATES FOR INLINE EDITING
     const [editingSubjectId, setEditingSubjectId] = useState(null);
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [tempName, setTempName] = useState("");
+    const [visibleCodeId, setVisibleCodeId] = useState(null);
+
 
     // --- SEARCH FILTERING LOGIC ---
-    const filteredSubjects = subjects.map(subject => {
+    const filteredSubjects = (subjects || []).map(subject => {
         const query = searchTerm.toLowerCase();
-        const subjectNameMatches = subject.name.toLowerCase().includes(query);
-        const filteredNotes = subject.Notes.filter(note => {
+        const subjectNameMatches = (subject.name || '').toLowerCase().includes(query);
+
+        // Safety check: ensure subject.Notes exists before filtering
+        const notesArray = subject.Notes || [];
+
+        const filteredNotes = notesArray.filter(note => {
             if (subjectNameMatches) return true;
             const noteTitle = (note.title || '').toLowerCase();
             const noteContent = (note.content || '').toLowerCase();
-            const noteDate = new Date(note.createdAt).toLocaleDateString().toLowerCase();
+            const noteDate = note.createdAt ? new Date(note.createdAt).toLocaleDateString().toLowerCase() : '';
             return noteTitle.includes(query) || noteContent.includes(query) || noteDate.includes(query);
         });
+
         return { ...subject, Notes: filteredNotes };
     }).filter(subject => {
         const query = searchTerm.toLowerCase();
-        return subject.Notes.length > 0 || subject.name.toLowerCase().includes(query);
+        // Return subject if it has notes OR if the name matches the search
+        return (subject.Notes && subject.Notes.length > 0) || (subject.name || '').toLowerCase().includes(query);
     });
 
     const handleAddSubject = () => {
@@ -55,7 +67,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
         try {
             await axios.put(`http://localhost:5000/api/subjects/${id}`, { name: finalName }, { withCredentials: true });
             setEditingSubjectId(null);
-            onRefresh();
+            onRefresh(true);
         } catch (err) { console.error("Error renaming subject", err); }
     };
 
@@ -65,7 +77,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
         if (window.confirm("Are you sure? This will delete all notes in this subject!")) {
             try {
                 await axios.delete(`http://localhost:5000/api/subjects/${id}`, { withCredentials: true });
-                onRefresh();
+                onRefresh(true);
             } catch (err) { console.error("Error deleting subject", err); }
         }
     };
@@ -80,7 +92,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
                 ...prev,
                 [subjectId]: true
             }));
-            await onRefresh();
+            await onRefresh(true);
             onNoteSelect(res.data);
             // Automatically start editing the new note's title
             setTempName('New Note');
@@ -100,7 +112,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
             }
 
             setEditingNoteId(null);
-            onRefresh();
+            onRefresh(true);
         } catch (err) { console.error("Error renaming note", err); }
     };
 
@@ -108,7 +120,7 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
         if (window.confirm("Delete this note?")) {
             try {
                 await axios.delete(`http://localhost:5000/api/notes/${id}`, { withCredentials: true });
-                onRefresh();
+                onRefresh(true);
             } catch (err) { console.error("Error deleting note", err); }
         }
     };
@@ -129,6 +141,51 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
             setShareEmail('');
         } catch (err) {
             alert(err.response?.data?.message || "User not found or error sharing");
+        }
+    };
+
+    // Function 1: Create a new Study Group
+    const handleCreateGroup = async () => {
+        if (!newGroupName) return;
+        try {
+            await axios.post('http://localhost:5000/api/groups/create',
+                { name: newGroupName },
+                { withCredentials: true }
+            );
+            setNewGroupName(''); // Clear input
+            onRefresh(true);        // Refresh Dashboard data
+        } catch (err) {
+            alert("Error creating group");
+        }
+    };
+
+    // Function 2: Join an existing group with a code
+    const handleJoinGroup = async () => {
+        if (!inviteCodeInput) return;
+        try {
+            await axios.post('http://localhost:5000/api/groups/join',
+                { inviteCode: inviteCodeInput },
+                { withCredentials: true }
+            );
+            setInviteCodeInput('');
+            setIsJoining(false); // Switch back to "Create" view
+            onRefresh(true);
+        } catch (err) {
+            alert(err.response?.data?.message || "Could not join group");
+        }
+    };
+
+    // Function 3: Create a note INSIDE a specific group
+    const handleGroupNoteCreate = async (groupId) => {
+        try {
+            await axios.post('http://localhost:5000/api/notes', {
+                title: 'New Group Note',
+                groupId: groupId // This triggers our new logic in notes.js
+            }, { withCredentials: true });
+
+            onRefresh(true); // Refresh so the new note appears in the sidebar
+        } catch (err) {
+            console.error("Error creating group note", err);
         }
     };
 
@@ -251,6 +308,102 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
                             ))}
                         </div>
                     )}
+                </div>
+            ))}
+            <hr />
+            <h3>Study Groups</h3>
+
+            {/* Create or Join Toggle */}
+            <div style={{ marginBottom: '15px' }}>
+                {isJoining ? (
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <input
+                            placeholder="Enter Invite Code..."
+                            value={inviteCodeInput}
+                            onChange={(e) => setInviteCodeInput(e.target.value)}
+                            style={{ flex: 1, padding: '5px' }}
+                        />
+                        <button onClick={handleJoinGroup}>Join</button>
+                        <button onClick={() => setIsJoining(false)}>x</button>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <input
+                            placeholder="New Group Name..."
+                            value={newGroupName}
+                            onChange={(e) => {
+                                if (e.target.value.length <= 20) {
+                                    setNewGroupName(e.target.value);
+                                }
+                            }}
+                            maxLength={20} // Physical limit on the input
+                            style={{ flex: 1, padding: '5px' }}
+                        />
+                        <button onClick={handleCreateGroup}>+</button>
+                        <button onClick={() => setIsJoining(true)} title="Join with code">🔗</button>
+                    </div>
+                )}
+            </div>
+
+            {/* List of Groups */}
+            {groups.map(group => (
+                <div key={group.id} style={{ marginBottom: '15px', padding: '10px', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                            fontWeight: 'bold',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '150px' // Keeps the name from pushing the button off-screen
+                        }}>
+                            👥 {group.name}
+                        </span>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                            {/* Toggle Invite Code Button */}
+                            <button
+                                title="Show Invite Code"
+                                onClick={() => setVisibleCodeId(visibleCodeId === group.id ? null : group.id)}
+                                style={{ padding: '2px 5px', fontSize: '12px', cursor: 'pointer' }}
+                            >
+                                🔑
+                            </button>
+
+                            <button
+                                className="add-note-btn"
+                                style={{ flexShrink: 0 }}
+                                onClick={(e) => { e.stopPropagation(); handleGroupNoteCreate(group.id); }}
+                            >
+                                + Note
+                            </button>
+                        </div>
+                    </div>
+
+                    {visibleCodeId === group.id && (
+                        <div style={{
+                            marginTop: '8px',
+                            padding: '5px',
+                            background: '#f8f9fa',
+                            border: '1px dashed #ccc',
+                            borderRadius: '4px',
+                            textAlign: 'center'
+                        }}>
+                            <small style={{ color: '#666', display: 'block' }}>Invite Code:</small>
+                            <strong style={{ letterSpacing: '1px', color: '#333' }}>{group.inviteCode}</strong>
+                        </div>
+                    )}
+
+                    {/* Render notes belonging to this group */}
+                    <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+                        {group.Notes && group.Notes.map(groupNote => (
+                            <div
+                                key={groupNote.id}
+                                onClick={() => onNoteSelect(groupNote)}
+                                style={{ fontSize: '13px', cursor: 'pointer', padding: '3px 0' }}
+                            >
+                                📄 {groupNote.title}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ))}
         </div>

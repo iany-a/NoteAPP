@@ -6,12 +6,17 @@ const authCheck = require('../middleware/authCheck');
 // 1. GET all subjects and nested notes
 router.get('/my-notes', authCheck, async (req, res) => {
   try {
-    const data = await Subject.findAll({
+    const subjects = await Subject.findAll({
       where: { UserId: req.user.id },
-      include: [{ model: Note }]
+      include: [{
+        model: Note,
+        // Ensure it's a LEFT JOIN so subjects without notes still show up
+        required: false
+      }]
     });
-    res.json(data);
+    res.json(subjects);
   } catch (err) {
+    console.error("Fetch Error:", err);
     res.status(500).json({ error: err.message });
   }
 });

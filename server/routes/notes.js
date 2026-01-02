@@ -25,13 +25,23 @@ router.post('/upload-image', authCheck, upload.single('image'), (req, res) => {
 // POST create a new note
 router.post('/', authCheck, async (req, res) => {
   try {
-    const { title, subjectId } = req.body;
+    const { title, subjectId, groupId } = req.body;
+    
+    // Safety check: Ensure it's attached to SOMETHING
+    if (!subjectId && !groupId) {
+      return res.status(400).json({ error: "Note must belong to a Subject or a Group" });
+    }
+
     const newNote = await Note.create({
       title: title || 'Untitled Note',
-      content: '', // Start empty
-      SubjectId: subjectId,
-      UserId: req.user.id
+      content: '', 
+      UserId: req.user.id,
+      // If subjectId is provided, it saves it. If not, it's null.
+      SubjectId: subjectId || null, 
+      // If groupId is provided, it saves it. If not, it's null.
+      GroupId: groupId || null     
     });
+    
     res.json(newNote);
   } catch (err) {
     res.status(500).json({ error: err.message });

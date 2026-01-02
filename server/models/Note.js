@@ -14,7 +14,7 @@ module.exports = (sequelize, DataTypes) => {
   Note.associate = (models) => {
     Note.belongsTo(models.Subject);
     Note.belongsTo(models.User);
-    Note.belongsTo(models.Groups);
+    Note.belongsTo(models.Group);
   };
 
   return Note;

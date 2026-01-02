@@ -8,6 +8,7 @@ const Dashboard = () => {
   const [subjects, setSubjects] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null); // Keep this one
   const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState([]);
 
 
 
@@ -16,15 +17,22 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+const fetchData = async (silent = false) => {
+    // Only show the "Loading..." screen if it's NOT a silent refresh
+    if (!silent) setLoading(true);
+
     try {
-      const response = await axios.get('http://localhost:5000/api/subjects/my-notes', { withCredentials: true });
-      setSubjects(response.data);
-      setLoading(false);
+        const subjectsRes = await axios.get('http://localhost:5000/api/subjects/my-notes', { withCredentials: true });
+        setSubjects(subjectsRes.data || []);
+        
+        const groupsRes = await axios.get('http://localhost:5000/api/groups/my-groups', { withCredentials: true });
+        setGroups(groupsRes.data || []);
     } catch (err) {
-      console.error("Error fetching notes", err);
+        console.error("Fetch error:", err);
+    } finally {
+        setLoading(false); // This hides the loading screen
     }
-  };
+};
 
   if (loading) return <div>Loading your workspace...</div>;
 
@@ -70,6 +78,7 @@ const Dashboard = () => {
       <div className="sidebar-section">
         <Sidebar
           subjects={subjects}
+          groups={groups}
           onAddSubject={handleAddSubjectLocally}
           onRefresh={fetchData}
           onNoteSelect={setSelectedNote}

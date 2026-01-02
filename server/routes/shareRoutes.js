@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const { Note, User, SharedNote } = require('../models');
 
 // POST: Share a note with a colleague
@@ -15,7 +16,11 @@ router.post('/share-note', async (req, res) => {
         }
 
         // 2. Find the colleague by email
-        const colleague = await User.findOne({ where: { email: colleagueEmail } });
+        const colleague = await User.findOne({
+            where: {
+                email: { [Op.iLike]: colleagueEmail }
+            }
+        });
         if (!colleague) {
             return res.status(404).json({ message: "Student with this email not found" });
         }
