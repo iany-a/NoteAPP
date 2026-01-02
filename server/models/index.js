@@ -7,6 +7,8 @@ const db = {};
 db.User = require('./User')(sequelize, DataTypes);
 db.Subject = require('./Subject')(sequelize, DataTypes);
 db.Note = require('./Note')(sequelize, DataTypes);
+db.SharedNote = require('./SharedNote')(sequelize, DataTypes);
+db.Groups = require('./Groups')(sequelize, DataTypes);
 
 // Run associations (This connects the Foreign Keys)
 Object.keys(db).forEach(modelName => {

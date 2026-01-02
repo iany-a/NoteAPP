@@ -27,6 +27,8 @@ app.use(passport.session());
 app.use('/auth', require('./routes/auth'));
 app.use('/api/subjects', require('./routes/subjects'));
 app.use('/api/notes', require('./routes/notes'));
+app.use('/api/groups', require('./routes/groupRoutes'));
+app.use('/api/share', require('./routes/shareRoutes'));
 
 // 5. DATABASE & SERVER START
 connectDB();
