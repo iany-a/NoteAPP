@@ -165,3 +165,37 @@
   flex-direction: column;
   overflow: hidden; /* Content inside Editor will handle its own scroll */
 }
+
+.note-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.share-input-box {
+    background: #f9f9f9;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.share-input-box input {
+    font-size: 12px;
+    padding: 4px;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.icon-btn:hover {
+    opacity: 1;
+}

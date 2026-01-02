@@ -6,6 +6,8 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [sharingNoteId, setSharingNoteId] = useState(null);
+    const [shareEmail, setShareEmail] = useState('');
 
     // NEW STATES FOR INLINE EDITING
     const [editingSubjectId, setEditingSubjectId] = useState(null);
@@ -111,6 +113,25 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
         }
     };
 
+    const handleShareSubmit = async (noteId) => {
+        if (!shareEmail.includes('@')) {
+            alert("Please enter a valid email");
+            return;
+        }
+        try {
+            await axios.post('http://localhost:5000/api/share/share-note', {
+                noteId: noteId,
+                colleagueEmail: shareEmail
+            }, { withCredentials: true });
+
+            alert("Note shared successfully!");
+            setSharingNoteId(null);
+            setShareEmail('');
+        } catch (err) {
+            alert(err.response?.data?.message || "User not found or error sharing");
+        }
+    };
+
     return (
         <div className="sidebar-content" style={{ padding: '15px' }}>
             <h3>My Subjects</h3>
@@ -158,51 +179,74 @@ const Sidebar = ({ subjects, onRefresh, onNoteSelect, activeNote, onAddSubject }
                                     className="note-item-wrapper"
                                     style={{
                                         display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
+                                        flexDirection: 'column', // Changed to column to fit the share box below
                                         padding: '6px 8px',
                                         cursor: 'pointer',
                                         borderRadius: '4px',
                                         borderBottom: '1px solid #f9f9f9',
                                         backgroundColor: activeNote?.id === note.id ? '#f0f0f0' : 'transparent'
-                                    }} onClick={() => onNoteSelect(note)}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                                        {editingNoteId === note.id ? (
+                                    }}
+                                    onClick={() => onNoteSelect(note)}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+                                            {editingNoteId === note.id ? (
+                                                <input
+                                                    autoFocus
+                                                    className="rename-input"
+                                                    value={tempName}
+                                                    onChange={(e) => setTempName(e.target.value)}
+                                                    onFocus={(e) => e.target.select()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onBlur={() => handleNoteRenameSubmit(note.id)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleNoteRenameSubmit(note.id)}
+                                                />
+                                            ) : (
+                                                <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    📄 {note.title || 'Untitled'}
+                                                </span>
+                                            )}
+                                            <small style={{ fontSize: '10px', color: '#999' }}>{new Date(note.createdAt).toLocaleDateString()}</small>
+                                        </div>
+
+                                        <div className="note-actions">
+                                            {/* --- NEW SHARE BUTTON --- */}
+                                            <button title="Share Note" onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSharingNoteId(sharingNoteId === note.id ? null : note.id);
+                                            }}>👤</button>
+
+                                            <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(note.id); setTempName(note.title); }}>✏️</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }}>🗑️</button>
+                                        </div>
+                                    </div>
+
+                                    {/* --- NEW SHARE INPUT BOX --- */}
+                                    {sharingNoteId === note.id && (
+                                        <div style={{
+                                            marginTop: '10px',
+                                            padding: '10px',
+                                            background: '#fff',
+                                            border: '1px solid #ddd',
+                                            borderRadius: '4px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '5px'
+                                        }} onClick={(e) => e.stopPropagation()}>
                                             <input
                                                 autoFocus
-                                                className="rename-input"
-                                                value={tempName}
-                                                onChange={(e) => setTempName(e.target.value)}
-
-                                                // This forces the highlight/selection of the text
-                                                onFocus={(e) => {
-                                                    const val = e.target.value;
-                                                    e.target.setSelectionRange(0, val.length); // Selects from start to end
-                                                }}
-
-                                                // This prevents a click from de-selecting the text immediately
-                                                onMouseUp={(e) => {
-                                                    if (editingNoteId === note.id) {
-                                                        // Only prevent default if we just focused
-                                                        // so the user can still click to move the cursor later
-                                                    }
-                                                }}
-
-                                                onClick={(e) => e.stopPropagation()}
-                                                onBlur={() => handleNoteRenameSubmit(note.id)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleNoteRenameSubmit(note.id)}
+                                                placeholder="Colleague's email..."
+                                                value={shareEmail}
+                                                onChange={(e) => setShareEmail(e.target.value)}
+                                                style={{ fontSize: '12px', padding: '5px' }}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleShareSubmit(note.id)}
                                             />
-                                        ) : (
-                                            <span style={{ fontSize: '14px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                📄 {note.title || 'Untitled'}
-                                            </span>
-                                        )}
-                                        <small style={{ fontSize: '10px', color: '#999' }}>{new Date(note.createdAt).toLocaleDateString()}</small>
-                                    </div>
-                                    <div className="note-actions">
-                                        <button onClick={(e) => { e.stopPropagation(); setEditingNoteId(note.id); setTempName(note.title); }}>✏️</button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteNote(note.id); }}>🗑️</button>
-                                    </div>
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <button style={{ flex: 1, fontSize: '11px' }} onClick={() => handleShareSubmit(note.id)}>Share</button>
+                                                <button style={{ flex: 1, fontSize: '11px' }} onClick={() => setSharingNoteId(null)}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
