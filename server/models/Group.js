@@ -6,7 +6,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Group.associate = (models) => {
     Group.belongsTo(models.User, { as: 'Creator' }); // The student who made the group
-    Group.hasMany(models.Note); // Notes shared within this group
+    Group.hasMany(models.Note, { onDelete: 'CASCADE' });
     Group.belongsToMany(models.User, { through: 'GroupMember' });
   };
 

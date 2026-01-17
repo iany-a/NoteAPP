@@ -85,4 +85,18 @@ router.get('/my-groups', async (req, res) => {
     }
 });
 
+router.delete('/:id', async (req, res) => {
+    console.log("Delete request received for ID:", req.params.id);
+try {
+        const deleted = await Group.destroy({ where: { id: req.params.id } });
+        if (deleted) {
+            res.status(200).json({ message: "Deleted" });
+        } else {
+            res.status(404).json({ error: "Group not found in database" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

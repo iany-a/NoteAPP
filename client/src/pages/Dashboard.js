@@ -17,22 +17,22 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-const fetchData = async (silent = false) => {
+  const fetchData = async (silent = false) => {
     // Only show the "Loading..." screen if it's NOT a silent refresh
     if (!silent) setLoading(true);
 
     try {
-        const subjectsRes = await axios.get('http://localhost:5000/api/subjects/my-notes', { withCredentials: true });
-        setSubjects(subjectsRes.data || []);
-        
-        const groupsRes = await axios.get('http://localhost:5000/api/groups/my-groups', { withCredentials: true });
-        setGroups(groupsRes.data || []);
+      const subjectsRes = await axios.get('http://localhost:5000/api/subjects/my-notes', { withCredentials: true });
+      setSubjects(subjectsRes.data || []);
+
+      const groupsRes = await axios.get('http://localhost:5000/api/groups/my-groups', { withCredentials: true });
+      setGroups(groupsRes.data || []);
     } catch (err) {
-        console.error("Fetch error:", err);
+      console.error("Fetch error:", err);
     } finally {
-        setLoading(false); // This hides the loading screen
+      setLoading(false); // This hides the loading screen
     }
-};
+  };
 
   if (loading) return <div>Loading your workspace...</div>;
 
@@ -63,12 +63,23 @@ const fetchData = async (silent = false) => {
   };
 
   const updateNoteContentLocally = (noteId, newContent) => {
+    // 1. Update Personal Notes (Subjects)
     setSubjects(prevSubjects =>
       prevSubjects.map(subject => ({
         ...subject,
         Notes: subject.Notes.map(note =>
           note.id === noteId ? { ...note, content: newContent } : note
         )
+      }))
+    );
+
+    // 2. Update Group Notes
+    setGroups(prevGroups =>
+      prevGroups.map(group => ({
+        ...group,
+        Notes: group.Notes ? group.Notes.map(note =>
+          note.id === noteId ? { ...note, content: newContent } : note
+        ) : []
       }))
     );
   };

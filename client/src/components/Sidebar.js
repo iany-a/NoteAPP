@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import '../App.css';
 
+
+
 const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, onAddSubject }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
@@ -18,6 +20,9 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const [editingNoteId, setEditingNoteId] = useState(null);
     const [tempName, setTempName] = useState("");
     const [visibleCodeId, setVisibleCodeId] = useState(null);
+
+    const [addingNoteToGroupId, setAddingNoteToGroupId] = useState(null);
+    const [newNoteTitle, setNewNoteTitle] = useState("");
 
 
     // --- SEARCH FILTERING LOGIC ---
@@ -175,17 +180,51 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
         }
     };
 
-    // Function 3: Create a note INSIDE a specific group
-    const handleGroupNoteCreate = async (groupId) => {
+    // Trigger the inline naming field
+    const triggerAddGroupNote = (groupId) => {
+        setAddingNoteToGroupId(groupId);
+        setNewNoteTitle("");
+    };
+
+    // Actually send the new note to the database
+    const submitGroupNote = async (groupId) => {
+        const title = newNoteTitle.trim();
+        if (!title) {
+            setAddingNoteToGroupId(null);
+            return;
+        }
+
         try {
-            await axios.post('http://localhost:5000/api/notes', {
-                title: 'New Group Note',
-                groupId: groupId // This triggers our new logic in notes.js
+            const res = await axios.post('http://localhost:5000/api/notes', {
+                title: title,
+                groupId: groupId
             }, { withCredentials: true });
 
-            onRefresh(true); // Refresh so the new note appears in the sidebar
+            setAddingNoteToGroupId(null);
+            setNewNoteTitle("");
+
+            // Refresh so it appears, then select the new note automatically
+            await onRefresh(true);
+            onNoteSelect(res.data);
+
+            // Optional: If you want to immediately rename it further like subjects do:
+            // setTempName(title);
+            // setEditingNoteId(res.data.id);
+
         } catch (err) {
             console.error("Error creating group note", err);
+        }
+    };
+
+    const handleDeleteGroup = async (groupId) => {
+        if (window.confirm("Are you sure? This will delete the group and all its shared notes for everyone.")) {
+            try {
+                await axios.delete(`http://localhost:5000/api/groups/${groupId}`, { withCredentials: true });
+                onRefresh(true); // Silent refresh to update the sidebar instantly
+            } catch (err) {
+                console.error("Error deleting group:", err);
+                alert("Could not delete group.");
+            }
         }
     };
 
@@ -369,9 +408,17 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
                             </button>
 
                             <button
+                                title="Delete Group"
+                                onClick={() => handleDeleteGroup(group.id)}
+                                style={{ padding: '2px 5px', fontSize: '12px', color: 'red', border: '1px solid red', borderRadius: '4px', background: 'none', cursor: 'pointer' }}
+                            >
+                                🗑️
+                            </button>
+
+                            <button
                                 className="add-note-btn"
                                 style={{ flexShrink: 0 }}
-                                onClick={(e) => { e.stopPropagation(); handleGroupNoteCreate(group.id); }}
+                                onClick={(e) => { e.stopPropagation(); triggerAddGroupNote(group.id); }}
                             >
                                 + Note
                             </button>
@@ -394,13 +441,73 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
 
                     {/* Render notes belonging to this group */}
                     <div style={{ marginLeft: '15px', marginTop: '5px' }}>
+
+                        {/* NEW: Inline input for naming the group note */}
+                        {addingNoteToGroupId === group.id && (
+                            <div style={{ marginBottom: '5px' }}>
+                                <input
+                                    autoFocus
+                                    placeholder="Note title..."
+                                    value={newNoteTitle}
+                                    onChange={(e) => setNewNoteTitle(e.target.value)}
+                                    onBlur={() => submitGroupNote(group.id)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') submitGroupNote(group.id);
+                                        if (e.key === 'Escape') setAddingNoteToGroupId(null);
+                                    }}
+                                    style={{ width: '90%', padding: '2px 5px', fontSize: '13px', border: '1px solid #6366f1' }}
+                                />
+                            </div>
+                        )}
+
                         {group.Notes && group.Notes.map(groupNote => (
-                            <div
-                                key={groupNote.id}
+                            <div key={groupNote.id}
+                                className="note-item-wrapper"
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '4px 8px',
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    backgroundColor: activeNote?.id === groupNote.id ? '#f0f0f0' : 'transparent'
+                                }}
                                 onClick={() => onNoteSelect(groupNote)}
-                                style={{ fontSize: '13px', cursor: 'pointer', padding: '3px 0' }}
                             >
-                                📄 {groupNote.title}
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                    {editingNoteId === groupNote.id ? (
+                                        <input
+                                            autoFocus
+                                            className="rename-input"
+                                            value={tempName}
+                                            onChange={(e) => setTempName(e.target.value)}
+                                            onFocus={(e) => e.target.select()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onBlur={() => handleNoteRenameSubmit(groupNote.id)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleNoteRenameSubmit(groupNote.id)}
+                                            style={{ width: '90%', fontSize: '13px' }}
+                                        />
+                                    ) : (
+                                        <span style={{ fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            📄 {groupNote.title || 'Untitled'}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="note-actions">
+                                    {/* Rename Button */}
+                                    <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingNoteId(groupNote.id);
+                                        setTempName(groupNote.title);
+                                    }}>✏️</button>
+
+                                    {/* Delete Button */}
+                                    <button onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteNote(groupNote.id);
+                                    }}>🗑️</button>
+                                </div>
                             </div>
                         ))}
                     </div>
