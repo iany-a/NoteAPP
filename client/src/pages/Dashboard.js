@@ -7,15 +7,28 @@ import "../App.css";
 const Dashboard = () => {
   const [subjects, setSubjects] = useState([]);
   const [selectedNote, setSelectedNote] = useState(null); // Keep this one
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
 
 
 
   // 1. Fetch data on load
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // This runs ONLY ONCE when the dashboard opens
+useEffect(() => {
+    const checkUserSession = async () => {
+        try {
+            const userRes = await axios.get('http://localhost:5000/auth/me', { withCredentials: true });
+            console.log("✅ Identity Confirmed:", userRes.data.name); // Only logs once!
+            setUser(userRes.data);
+        } catch (err) {
+            console.error("User not logged in");
+        }
+    };
+
+    checkUserSession();
+    fetchData(); // Initial load of notes
+}, []);
 
   const fetchData = async (silent = false) => {
     // Only show the "Loading..." screen if it's NOT a silent refresh
@@ -90,6 +103,7 @@ const Dashboard = () => {
         <Sidebar
           subjects={subjects}
           groups={groups}
+          currentUser={user}
           onAddSubject={handleAddSubjectLocally}
           onRefresh={fetchData}
           onNoteSelect={setSelectedNote}
@@ -103,6 +117,7 @@ const Dashboard = () => {
             key={selectedNote.id}
             activeNote={selectedNote}
             onLocalContentUpdate={updateNoteContentLocally}
+            isReadOnly={selectedNote.UserId && selectedNote.UserId !== user?.id}
           />
         ) : (
           <div className="welcome-screen">

@@ -3,37 +3,43 @@ import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import "../App.css"
 
-const Editor = ({ activeNote, onLocalContentUpdate }) => {
+const Editor = ({ activeNote, onLocalContentUpdate, isReadOnly }) => {
     const [content, setContent] = useState(activeNote?.content || '');
     const [saveStatus, setSaveStatus] = useState('Saved');
 
-useEffect(() => {
-    // 1. If there's no note, or the content is EXACTLY what is already in the database, STOP.
-    if (!activeNote || content === activeNote.content) {
-        return;
-    }
-
-    // 2. Only start the timer if the local content is different from the saved content
-    const delayDebounceFn = setTimeout(async () => {
-        try {
-            setSaveStatus('Saving...');
-            await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`, 
-                { content }, 
-                { withCredentials: true }
-            );
-            
-            // 3. Inform the parent that a save happened so the Sidebar stays in sync
-            onLocalContentUpdate(activeNote.id, content);
-            
-            setSaveStatus('Saved');
-        } catch (err) {
-            console.error("Save failed", err);
-            setSaveStatus('Error');
+    useEffect(() => {
+        // 1. If there's no note, or the content is EXACTLY what is already in the database, STOP.
+        if (!activeNote || content === activeNote.content) {
+            return;
         }
-    }, 500);
+        //2. Write roles check
+        if (isReadOnly) return;
 
-    return () => clearTimeout(delayDebounceFn);
-}, [content, activeNote.id]); // <--- Only watch content and the note ID, not the whole note object
+        if (!activeNote || content === activeNote.content) {
+            return;
+        }
+
+        // 3. Only start the timer if the local content is different from the saved content
+        const delayDebounceFn = setTimeout(async () => {
+            try {
+                setSaveStatus('Saving...');
+                await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`,
+                    { content },
+                    { withCredentials: true }
+                );
+
+                // 4. Inform the parent that a save happened so the Sidebar stays in sync
+                onLocalContentUpdate(activeNote.id, content);
+
+                setSaveStatus('Saved');
+            } catch (err) {
+                console.error("Save failed", err);
+                setSaveStatus('Error');
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [content, activeNote.id]); // <--- Only watch content and the note ID, not the whole note object
 
     if (!activeNote) return <div className="no-note">Select a note to start editing</div>;
 
@@ -82,11 +88,20 @@ useEffect(() => {
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px', borderRight: '1px solid #bea6a6ff' }}>
                     <textarea
                         className="zen-textarea"
-                        style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: '16px' }} // Added inline flex: 1 to be safe
+                        style={{
+                            flex: 1,
+                            border: 'none',
+                            outline: 'none',
+                            resize: 'none',
+                            fontSize: '16px',
+                            backgroundColor: isReadOnly ? '#f9f9f9' : 'transparent', // Light gray if locked
+                            cursor: isReadOnly ? 'not-allowed' : 'text'             // Show lock cursor
+                        }}
                         value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        onPaste={handlePaste}
-                        placeholder="Start typing or paste an image..."
+                        onChange={(e) => !isReadOnly && setContent(e.target.value)} // Double protection
+                        onPaste={(e) => !isReadOnly && handlePaste(e)}             // Block image pastes
+                        readOnly={isReadOnly} // <--- The actual HTML attribute
+                        placeholder={isReadOnly ? "This note is read-only" : "Start typing..."}
                     />
                 </div>
 

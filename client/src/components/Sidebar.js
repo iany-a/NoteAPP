@@ -4,7 +4,7 @@ import '../App.css';
 
 
 
-const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, onAddSubject }) => {
+const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, onAddSubject, currentUser }) => {
     const [expandedFolders, setExpandedFolders] = useState({});
     const [newSubjectName, setNewSubjectName] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -495,18 +495,26 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
                                 </div>
 
                                 <div className="note-actions">
-                                    {/* Rename Button */}
-                                    <button onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingNoteId(groupNote.id);
-                                        setTempName(groupNote.title);
-                                    }}>✏️</button>
+                                    {/* Logic: Only show buttons if the note's UserId matches 
+                                        the ID of the person currently logged in.
+                                    */}
+                                    {groupNote.UserId === currentUser?.id ? (
+                                        <>
+                                            <button onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingNoteId(groupNote.id);
+                                                setTempName(groupNote.title);
+                                            }}>✏️</button>
 
-                                    {/* Delete Button */}
-                                    <button onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteNote(groupNote.id);
-                                    }}>🗑️</button>
+                                            <button onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteNote(groupNote.id);
+                                            }}>🗑️</button>
+                                        </>
+                                    ) : (
+                                        /* If not the owner, show a "Read Only" lock or icon */
+                                        <span title="Read-only" style={{ fontSize: '10px', opacity: 0.5, marginRight: '5px' }}>🔒</span>
+                                    )}
                                 </div>
                             </div>
                         ))}

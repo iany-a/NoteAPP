@@ -26,7 +26,7 @@ router.post('/upload-image', authCheck, upload.single('image'), (req, res) => {
 router.post('/', authCheck, async (req, res) => {
   try {
     const { title, subjectId, groupId } = req.body;
-    
+
     // Safety check: Ensure it's attached to SOMETHING
     if (!subjectId && !groupId) {
       return res.status(400).json({ error: "Note must belong to a Subject or a Group" });
@@ -34,14 +34,14 @@ router.post('/', authCheck, async (req, res) => {
 
     const newNote = await Note.create({
       title: title || 'Untitled Note',
-      content: '', 
+      content: '',
       UserId: req.user.id,
       // If subjectId is provided, it saves it. If not, it's null.
-      SubjectId: subjectId || null, 
+      SubjectId: subjectId || null,
       // If groupId is provided, it saves it. If not, it's null.
-      GroupId: groupId || null     
+      GroupId: groupId || null
     });
-    
+
     res.json(newNote);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -54,6 +54,9 @@ router.put('/:id', authCheck, async (req, res) => {
     const { title, content } = req.body;
     const note = await Note.findByPk(req.params.id);
     if (!note) return res.status(404).send('Note not found');
+    if (note.UserId !== req.user.id) {
+      return res.status(403).json({ error: "Unauthorized: You can only delete your own notes." });
+    }
 
     // Update both title and content
     if (title !== undefined) note.title = title;

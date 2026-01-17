@@ -20,11 +20,11 @@ passport.deserializeUser(async (id, done) => {
 
 // 3. Your Strategy Logic
 passport.use(new MicrosoftStrategy({
-    clientID: process.env.MICROSOFT_CLIENT_ID,
-    clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-    callbackURL: "http://localhost:5000/auth/microsoft/callback",
-    scope: ['user.read']
-  },
+  clientID: process.env.MICROSOFT_CLIENT_ID,
+  clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
+  callbackURL: "http://localhost:5000/auth/microsoft/callback",
+  scope: ['user.read']
+},
   async (accessToken, refreshToken, profile, done) => {
     const email = profile.emails[0].value;
 
@@ -35,9 +35,9 @@ passport.use(new MicrosoftStrategy({
     try {
       const [user] = await User.findOrCreate({
         where: { microsoftId: profile.id },
-        defaults: { 
+        defaults: {
           email: email,
-          name: profile.displayName 
+          name: profile.displayName
         }
       });
       return done(null, user);
@@ -50,7 +50,7 @@ passport.use(new MicrosoftStrategy({
 // 4. THE ACTUAL ROUTES (The part Express was missing)
 router.get('/microsoft', passport.authenticate('microsoft'));
 
-router.get('/microsoft/callback', 
+router.get('/microsoft/callback',
   passport.authenticate('microsoft', { failureRedirect: 'http://localhost:3000/login' }),
   (req, res) => {
     // Successful login, redirect to frontend dashboard
@@ -73,6 +73,16 @@ router.get('/logout', (req, res) => {
     res.redirect('http://localhost:3000/');
   });
 });
+
+router.get('/me', (req, res) => {
+  if (req.user) {
+    res.status(200).json(req.user);
+  } else {
+    res.status(401).json({ message: "Not authenticated" });
+  }
+});
+
+
 
 // 5. EXPORT THE ROUTER (Not passport)
 module.exports = router;
