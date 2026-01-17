@@ -6,6 +6,7 @@ const session = require('express-session');
 const { connectDB, sequelize } = require('./config/database');
 const db = require('./models');
 const app = express();
+const pgSession = require('connect-pg-simple')(session);
 
 
 app.set('trust proxy', 1); //for Render to work
@@ -18,14 +19,21 @@ app.use(cors({
 app.use(express.json());
 
 // 2. SESSION SETUP (Must be before Passport)
+
+
+// 2. SESSION SETUP (Connected to Database)
 app.use(session({
+  store: new pgSession({
+    conString: process.env.DATABASE_URL, // Uses your existing Render DB string
+    createTableIfMissing: true           // Automatically builds the session table
+  }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  proxy: true, // Required for Render
+  proxy: true, 
   cookie: {
-    secure: true,      // Must be true for HTTPS (Render)
-    sameSite: 'lax',  // CRITICAL: allows cookie to work between different .onrender.com URLs
+    secure: true,      
+    sameSite: 'none',  
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000 
   }
