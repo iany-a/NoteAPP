@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Editor from '../components/Editor';
 import api from '../api';
@@ -7,75 +6,48 @@ import "../App.css";
 
 const Dashboard = () => {
   const [subjects, setSubjects] = useState([]);
-  const [selectedNote, setSelectedNote] = useState(null);
+  const [selectedNote, setSelectedNote] = useState(null); // Keep this one
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
-  const navigate = useNavigate();
 
-  // 1. Initial Load: Token capture and Data Fetching
-  useEffect(() => {
-    const initializeDashboard = async () => {
-      // a. Check if we just arrived from Microsoft login with a token in the URL
-      const params = new URLSearchParams(window.location.search);
-      const urlToken = params.get('token');
 
-      if (urlToken) {
-        localStorage.setItem('token', urlToken);
-        // Clean the URL address bar immediately
-        navigate('/dashboard', { replace: true });
-      }
 
-      // b. Verify we have a token (either just saved or already in storage)
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error("No token found, redirecting to login.");
-        navigate('/');
-        return;
-      }
-
-      // c. Fetch Identity and Data in parallel
-      try {
-        const [userRes, subjectsRes, groupsRes] = await Promise.all([
-          api.get('/auth/me'),
-          api.get('/api/subjects/my-notes'),
-          api.get('/api/groups/my-groups')
-        ]);
-
-        console.log("✅ Identity Confirmed:", userRes.data.name);
-        setUser(userRes.data);
-        setSubjects(subjectsRes.data || []);
-        setGroups(groupsRes.data || []);
-      } catch (err) {
-        console.error("Dashboard initialization failed:", err);
-        // If the token is invalid or server rejects it, clear and boot
-        localStorage.removeItem('token');
-        navigate('/');
-      } finally {
-        setLoading(false);
-      }
+  // 1. Fetch data on load
+  // This runs ONLY ONCE when the dashboard opens
+useEffect(() => {
+    const checkUserSession = async () => {
+        try {
+            const userRes = await api.get('/auth/me', { withCredentials: true });
+            console.log("✅ Identity Confirmed:", userRes.data.name); // Only logs once!
+            setUser(userRes.data);
+        } catch (err) {
+            console.error("User not logged in");
+        }
     };
 
-    initializeDashboard();
-  }, [navigate]);
+    checkUserSession();
+    fetchData(); // Initial load of notes
+}, []);
 
-  // Manual refresh logic for the sidebar button
   const fetchData = async (silent = false) => {
+    // Only show the "Loading..." screen if it's NOT a silent refresh
     if (!silent) setLoading(true);
 
     try {
-      const [subjectsRes, groupsRes] = await Promise.all([
-        api.get('/api/subjects/my-notes'),
-        api.get('/api/groups/my-groups')
-      ]);
+      const subjectsRes = await api.get('/api/subjects/my-notes', { withCredentials: true });
       setSubjects(subjectsRes.data || []);
+
+      const groupsRes = await api.get('/api/groups/my-groups', { withCredentials: true });
       setGroups(groupsRes.data || []);
     } catch (err) {
-      console.error("Fetch error during refresh:", err);
+      console.error("Fetch error:", err);
     } finally {
-      setLoading(false);
+      setLoading(false); // This hides the loading screen
     }
   };
+
+  if (loading) return <div>Loading your workspace...</div>;
 
   const handleAddSubjectLocally = async (name) => {
     // 1. Create a temporary "Fake" subject to show immediately
@@ -86,7 +58,10 @@ const Dashboard = () => {
     setSubjects(prev => [...prev, tempSubject]);
 
     try {
-      const response = await api.post('/api/subjects/create', { name });
+      const response = await api.post('/api/subjects/create',
+        { name },
+        { withCredentials: true }
+      );
       const newSubject = {
         ...response.data,
         Notes: response.data.Notes || []
@@ -122,8 +97,6 @@ const Dashboard = () => {
     );
   };
 
-  if (loading) return <div>Loading your workspace...</div>;
-
   return (
     <div className="dashboard-layout">
       <div className="sidebar-section">
@@ -148,8 +121,8 @@ const Dashboard = () => {
           />
         ) : (
           <div className="welcome-screen">
-            <h2>Welcome, {user?.name || 'Student'}!</h2>
-            <p>Select a note from the sidebar to begin editing.</p>
+            <h2>Welcome!</h2>
+            <p>Select a note to begin.</p>
           </div>
         )}
       </div>

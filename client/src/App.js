@@ -8,8 +8,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
-        {/* This route catches the token from the URL */}
-        <Route path="/login-success" element={<LoginSuccess />} />
         <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </Router>
