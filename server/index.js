@@ -7,7 +7,26 @@ const { connectDB, sequelize } = require('./config/database');
 const db = require('./models');
 const app = express();
 const pgSession = require('connect-pg-simple')(session);
+const jwt = require('jsonwebtoken');
 
+
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: "No token provided" });
+  }
+
+  jwt.verify(token, process.env.SESSION_SECRET, (err, decoded) => { 
+    if (err) return res.status(403).json({ message: "Invalid token" });
+    
+    // This is the "magic" part: it puts the user info into req.user 
+    // so your existing route code (req.user.id) still works!
+    req.user = decoded; 
+    next();
+  });
+};
 
 app.set('trust proxy', 1); //for Render to work
 // 1. GLOBAL MIDDLEWARE
@@ -45,10 +64,10 @@ app.use(passport.session());
 
 // 4. ROUTES (Must be after Passport/Session)
 app.use('/auth', require('./routes/auth'));
-app.use('/api/subjects', require('./routes/subjects'));
-app.use('/api/notes', require('./routes/notes'));
-app.use('/api/groups', require('./routes/groupRoutes'));
-app.use('/api/share', require('./routes/shareRoutes'));
+app.use('/api/subjects', verifyToken, require('./routes/subjects')); // Added verifyToken
+app.use('/api/notes', verifyToken, require('./routes/notes'));       // Added verifyToken
+app.use('/api/groups', verifyToken, require('./routes/groupRoutes'));
+app.use('/api/share', verifyToken, require('./routes/shareRoutes'));
 
 // 5. DATABASE & SERVER START
 connectDB();
