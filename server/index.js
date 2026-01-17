@@ -7,20 +7,28 @@ const { connectDB, sequelize } = require('./config/database');
 const db = require('./models');
 const app = express();
 
+
+app.set('trust proxy', 1); //for Render to work
 // 1. GLOBAL MIDDLEWARE
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL, 
+  credentials: true, // This allows the browser to send cookies back
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 
 // 2. SESSION SETUP (Must be before Passport)
 app.use(session({
-  secret: 'process.env.SESSION_SECRET',
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true, // Required for Render
   cookie: {
-    // This is a safety switch for when you host it
-    secure: process.env.NODE_ENV === "production", 
-    sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax'
-  } // Set to true only if using HTTPS/Production
+    secure: true,      // Must be true for HTTPS (Render)
+    sameSite: 'none',  // CRITICAL: allows cookie to work between different .onrender.com URLs
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 
+  }
 }));
 
 // 3. PASSPORT INITIALIZATION
