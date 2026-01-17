@@ -25,7 +25,7 @@ app.use(session({
   proxy: true, // Required for Render
   cookie: {
     secure: true,      // Must be true for HTTPS (Render)
-    sameSite: 'none',  // CRITICAL: allows cookie to work between different .onrender.com URLs
+    sameSite: 'lax',  // CRITICAL: allows cookie to work between different .onrender.com URLs
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000 
   }
