@@ -50,11 +50,17 @@ passport.use(new MicrosoftStrategy({
 // 4. THE ACTUAL ROUTES (The part Express was missing)
 router.get('/microsoft', passport.authenticate('microsoft'));
 
-router.get('/microsoft/callback',
-  passport.authenticate('microsoft', { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
+router.get('/microsoft/callback', 
+  passport.authenticate('microsoft', { failureRedirect: '/login' }),
   (req, res) => {
-    // Successful login, redirect to frontend dashboard
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    // Explicitly save the session before redirecting
+    req.session.save((err) => {
+      if (err) {
+        console.error(err);
+        return res.redirect('/login');
+      }
+      res.redirect(process.env.FRONTEND_URL + '/dashboard');
+    });
   }
 );
 
