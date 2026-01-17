@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api';
 import '../App.css';
 
 
@@ -70,7 +70,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleSubjectRenameSubmit = async (id) => {
         const finalName = tempName.trim() || "Untitled Subject";
         try {
-            await axios.put(`http://localhost:5000/api/subjects/${id}`, { name: finalName }, { withCredentials: true });
+            await api.put(`/api/subjects/${id}`, { name: finalName }, { withCredentials: true });
             setEditingSubjectId(null);
             onRefresh(true);
         } catch (err) { console.error("Error renaming subject", err); }
@@ -81,7 +81,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleDeleteSubject = async (id) => {
         if (window.confirm("Are you sure? This will delete all notes in this subject!")) {
             try {
-                await axios.delete(`http://localhost:5000/api/subjects/${id}`, { withCredentials: true });
+                await api.delete(`/api/subjects/${id}`, { withCredentials: true });
                 onRefresh(true);
             } catch (err) { console.error("Error deleting subject", err); }
         }
@@ -89,7 +89,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
 
     const handleAddNote = async (subjectId) => {
         try {
-            const res = await axios.post('http://localhost:5000/api/notes',
+            const res = await api.post('/api/notes',
                 { title: 'New Note', subjectId: subjectId },
                 { withCredentials: true });
 
@@ -109,7 +109,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleNoteRenameSubmit = async (id) => {
         const finalTitle = tempName.trim() || "Untitled Note";
         try {
-            await axios.put(`http://localhost:5000/api/notes/${id}`,
+            await api.put(`/api/notes/${id}`,
                 { title: finalTitle },
                 { withCredentials: true });
             if (activeNote && activeNote.id === id) {
@@ -124,7 +124,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleDeleteNote = async (id) => {
         if (window.confirm("Delete this note?")) {
             try {
-                await axios.delete(`http://localhost:5000/api/notes/${id}`, { withCredentials: true });
+                await api.delete(`/api/notes/${id}`, { withCredentials: true });
                 onRefresh(true);
             } catch (err) { console.error("Error deleting note", err); }
         }
@@ -136,7 +136,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
             return;
         }
         try {
-            await axios.post('http://localhost:5000/api/share/share-note', {
+            await api.post('/api/share/share-note', {
                 noteId: noteId,
                 colleagueEmail: shareEmail
             }, { withCredentials: true });
@@ -153,7 +153,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleCreateGroup = async () => {
         if (!newGroupName) return;
         try {
-            await axios.post('http://localhost:5000/api/groups/create',
+            await api.post('/api/groups/create',
                 { name: newGroupName },
                 { withCredentials: true }
             );
@@ -168,7 +168,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleJoinGroup = async () => {
         if (!inviteCodeInput) return;
         try {
-            await axios.post('http://localhost:5000/api/groups/join',
+            await api.post('/api/groups/join',
                 { inviteCode: inviteCodeInput },
                 { withCredentials: true }
             );
@@ -195,7 +195,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
         }
 
         try {
-            const res = await axios.post('http://localhost:5000/api/notes', {
+            const res = await api.post('/api/notes', {
                 title: title,
                 groupId: groupId
             }, { withCredentials: true });
@@ -219,7 +219,7 @@ const Sidebar = ({ subjects, groups = [], onRefresh, onNoteSelect, activeNote, o
     const handleDeleteGroup = async (groupId) => {
         if (window.confirm("Are you sure? This will delete the group and all its shared notes for everyone.")) {
             try {
-                await axios.delete(`http://localhost:5000/api/groups/${groupId}`, { withCredentials: true });
+                await api.delete(`/api/groups/${groupId}`, { withCredentials: true });
                 onRefresh(true); // Silent refresh to update the sidebar instantly
             } catch (err) {
                 console.error("Error deleting group:", err);

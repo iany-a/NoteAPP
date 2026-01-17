@@ -3,7 +3,7 @@ import React from 'react';
 const LoginPage = () => {
   const handleLogin = () => {
     // Redirects the whole browser to the backend auth endpoint
-    window.location.href = "http://localhost:5000/auth/microsoft";
+    window.location.href = `${process.env.REACT_APP_API_URL}/auth/microsoft`;
   };
 
   return (

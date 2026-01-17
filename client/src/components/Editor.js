@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'; // Added useRef
-import axios from 'axios';
+import api from '../api';
 import ReactMarkdown from 'react-markdown';
 import "../App.css"
 
@@ -23,7 +23,7 @@ const Editor = ({ activeNote, onLocalContentUpdate, isReadOnly }) => {
         const delayDebounceFn = setTimeout(async () => {
             try {
                 setSaveStatus('Saving...');
-                await axios.put(`http://localhost:5000/api/notes/${activeNote.id}`,
+                await api.put(`/api/notes/${activeNote.id}`,
                     { content },
                     { withCredentials: true }
                 );
@@ -57,7 +57,7 @@ const Editor = ({ activeNote, onLocalContentUpdate, isReadOnly }) => {
                 formData.append('image', blob);
 
                 try {
-                    const res = await axios.post('http://localhost:5000/api/notes/upload-image', formData, {
+                    const res = await api.post('/api/notes/upload-image', formData, {
                         headers: { 'Content-Type': 'multipart/form-data' },
                         withCredentials: true
                     });

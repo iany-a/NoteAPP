@@ -22,7 +22,7 @@ passport.deserializeUser(async (id, done) => {
 passport.use(new MicrosoftStrategy({
   clientID: process.env.MICROSOFT_CLIENT_ID,
   clientSecret: process.env.MICROSOFT_CLIENT_SECRET,
-  callbackURL: "http://localhost:5000/auth/microsoft/callback",
+  callbackURL: process.env.CALLBACK_URL,
   scope: ['user.read']
 },
   async (accessToken, refreshToken, profile, done) => {
@@ -51,10 +51,10 @@ passport.use(new MicrosoftStrategy({
 router.get('/microsoft', passport.authenticate('microsoft'));
 
 router.get('/microsoft/callback',
-  passport.authenticate('microsoft', { failureRedirect: 'http://localhost:3000/login' }),
+  passport.authenticate('microsoft', { failureRedirect: `${process.env.FRONTEND_URL}/login` }),
   (req, res) => {
     // Successful login, redirect to frontend dashboard
-    res.redirect('http://localhost:3000/dashboard');
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 
@@ -70,7 +70,7 @@ router.get('/login/success', (req, res) => {
 // Logout route
 router.get('/logout', (req, res) => {
   req.logout(() => {
-    res.redirect('http://localhost:3000/');
+    res.redirect(`${process.env.FRONTEND_URL}/`);
   });
 });
 

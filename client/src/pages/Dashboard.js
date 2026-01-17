@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Sidebar';
 import Editor from '../components/Editor';
-import axios from 'axios';
+import api from '../api';
 import "../App.css";
 
 const Dashboard = () => {
@@ -18,7 +18,7 @@ const Dashboard = () => {
 useEffect(() => {
     const checkUserSession = async () => {
         try {
-            const userRes = await axios.get('http://localhost:5000/auth/me', { withCredentials: true });
+            const userRes = await api.get('/auth/me', { withCredentials: true });
             console.log("✅ Identity Confirmed:", userRes.data.name); // Only logs once!
             setUser(userRes.data);
         } catch (err) {
@@ -35,10 +35,10 @@ useEffect(() => {
     if (!silent) setLoading(true);
 
     try {
-      const subjectsRes = await axios.get('http://localhost:5000/api/subjects/my-notes', { withCredentials: true });
+      const subjectsRes = await api.get('/api/subjects/my-notes', { withCredentials: true });
       setSubjects(subjectsRes.data || []);
 
-      const groupsRes = await axios.get('http://localhost:5000/api/groups/my-groups', { withCredentials: true });
+      const groupsRes = await api.get('/api/groups/my-groups', { withCredentials: true });
       setGroups(groupsRes.data || []);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -58,7 +58,7 @@ useEffect(() => {
     setSubjects(prev => [...prev, tempSubject]);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/subjects/create',
+      const response = await api.post('/api/subjects/create',
         { name },
         { withCredentials: true }
       );

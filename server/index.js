@@ -8,15 +8,19 @@ const db = require('./models');
 const app = express();
 
 // 1. GLOBAL MIDDLEWARE
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
 app.use(express.json());
 
 // 2. SESSION SETUP (Must be before Passport)
 app.use(session({
-  secret: 'secret_key_change_this',
+  secret: 'process.env.SESSION_SECRET',
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set to true only if using HTTPS/Production
+  cookie: {
+    // This is a safety switch for when you host it
+    secure: process.env.NODE_ENV === "production", 
+    sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax'
+  } // Set to true only if using HTTPS/Production
 }));
 
 // 3. PASSPORT INITIALIZATION
